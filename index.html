@@ -1,91 +1,169 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Dominance Prototype</title>
-    <style>
-      html, body {
-        margin: 0;
-        // height: 100%;
-        background: #111;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-        color: #eee;
-      }
-      body {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-      .wrap {
-        display: flex;
-        justify-content: center;
-        margin-top: 40px;
-      }
-      canvas {
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        image-rendering: pixelated;
-      }
-      .hud {
-        margin-top: 18px;
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        font-size: 14px;
-        opacity: 0.95;
-      }
-      .pill {
-        
-        padding: 8px 10px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(20,20,20,0.7);
-        border-radius: 999px;
-        display: inline-flex;
-        gap: 10px;
-        align-items: center;
-      }
-      .dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        display: inline-block;
-      }
-      .btn {
-        
-        cursor: pointer;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(30,30,30,0.85);
-        color: #eee;
-        font-weight: 600;
-      }
-      .btn:active { transform: translateY(1px); }
-      .hint {
-        opacity: 0.75;
-        font-size: 12px;
-        margin-left: 8px;
-      }
-    </style>
-  </head>
-  <body>
-    
 
-    <div class="wrap">
-      <!-- 1:1 ratio map -->
-      <canvas id="game" width="640" height="640"></canvas>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dominance Prototype</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      /* height: 100%; */
+      background: #111;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: #eee;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .wrap {
+      display: flex;
+      justify-content: center;
+      margin-top: 40px;
+    }
+
+    canvas {
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      image-rendering: pixelated;
+    }
+
+    .hud {
+      margin-top: 18px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      font-size: 14px;
+      opacity: 0.95;
+    }
+
+    .pill {
+
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(20, 20, 20, 0.7);
+      border-radius: 999px;
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .btn {
+
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(30, 30, 30, 0.85);
+      color: #eee;
+      font-weight: 600;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .hint {
+      opacity: 0.75;
+      font-size: 12px;
+      /* margin-left: 8px; */
+    }
+
+    .menu {
+      position: absolute;
+      right: 30px;
+      top: 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(20, 20, 20, 0.7);
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(10px);
+      width: 160px;
+    }
+
+    .menu-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.5;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .menu .btn {
+      width: 100%;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .menu .btn.active {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    }
+
+    .score-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .score-item:not(:last-child) {
+      margin-right: 15px;
+    }
+  </style>
+</head>
+
+<body>
+
+
+  <div class="menu" id="modeMenu">
+    <div class="menu-title">Game Mode</div>
+    <button class="btn active" data-mode="1">Classic</button>
+    <button class="btn" data-mode="2">Checkerboard</button>
+    <button class="btn" data-mode="3">Four Teams</button>
+
+    <div class="menu-title" style="margin-top:20px">Speed</div>
+    <div style="display:flex; gap:10px; margin-bottom: 10px;">
+      <button class="btn speed-btn" id="speedUp">+</button>
+      <button class="btn speed-btn" id="speedDown">−</button>
     </div>
+    <div id="speedometer"
+      style="font-size: 11px; font-weight: 700; color: #aaa; text-align: center; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 4px;">
+      Speed: 800</div>
+  </div>
 
-    <div class="hud">
-      <div class="pill">
-        <span><span class="dot" id="dotA"></span> A: <span id="scoreA">0</span></span>
-        <span><span class="dot" id="dotB"></span> B: <span id="scoreB">0</span></span>
-        <span class="hint">Space: pause, R: reset</span>
-      </div>
-      <button class="btn" id="resetBtn">Reset</button>
+  <div class="wrap">
+    <!-- 1:1 ratio map -->
+    <canvas id="game" width="640" height="640" style="cursor: pointer;"></canvas>
+  </div>
+
+  <div class="hud">
+    <div class="pill" id="scoreContainer">
+      <!-- Dynamic scores will be injected here -->
     </div>
+    <div class="pill">
+      <span class="hint">Space: pause, R: reset</span>
+    </div>
+    <button class="btn" id="resetBtn">Reset</button>
+  </div>
 
-    <script src="./game.js"></script>
-  </body>
+  <script src="./game.js"></script>
+</body>
+
 </html>

@@ -4,27 +4,29 @@
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
 
-  const scoreAEl = document.getElementById("scoreA");
-  const scoreBEl = document.getElementById("scoreB");
+  const scoreContainer = document.getElementById("scoreContainer");
+  const modeMenu = document.getElementById("modeMenu");
   const resetBtn = document.getElementById("resetBtn");
-  const dotA = document.getElementById("dotA");
-  const dotB = document.getElementById("dotB");
+  const speedUpBtn = document.getElementById("speedUp");
+  const speedDownBtn = document.getElementById("speedDown");
+  const speedometer = document.getElementById("speedometer");
 
   const COLORS = {
-    A: "#550f27",
-    B: "#ddcfd3",
+    1: "#550f27", // A - Maroon
+    2: "#ddcfd3", // B - Grey
+    3: "#1a5e63", // C - Teal
+    4: "#c9a227", // D - Gold
     ballStroke: "rgba(0,0,0,0.25)",
     overlay: "rgba(0,0,0,0.35)",
     text: "rgba(255,255,255,0.92)",
   };
 
-  const BALL = {
-    A: COLORS.B,
-    B: COLORS.A,
+  const ballColors = {
+    1: COLORS[2],
+    2: COLORS[1],
+    3: COLORS[4],
+    4: COLORS[3]
   };
-
-  dotA.style.background = BALL.A;
-  dotB.style.background = BALL.B;
 
   // Board
   const cellSize = 34;
@@ -34,18 +36,99 @@
   const boardW = cols * cellSize;
   const boardH = rows * cellSize;
 
-  // Ownership: 1 = A, 2 = B
+  // Ownership
   const grid = new Uint8Array(cols * rows);
+  let activeMode = 1;
+  let balls = [];
+
+  // Starting speeds for each mode
+  const MODE_SPEEDS = {
+    1: 800,
+    2: 700,
+    3: 600
+  };
+
+  const MAX_SPEED = 1800; // Hard cap to prevent high-speed tunneling and purple bugs
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const idx = (x, y) => y * cols + x;
 
   function setInitialSplit() {
-    const mid = Math.floor(cols / 2);
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
-        grid[idx(x, y)] = x < mid ? 1 : 2;
+        let owner = 1;
+        if (activeMode === 1) {
+          owner = x < Math.floor(cols / 2) ? 1 : 2;
+        } else if (activeMode === 2) {
+          // Checkerboard 4 quadrants for 2 teams
+          const midX = Math.floor(cols / 2);
+          const midY = Math.floor(rows / 2);
+          if (x < midX) {
+            owner = y < midY ? 1 : 2;
+          } else {
+            owner = y < midY ? 2 : 1;
+          }
+        } else if (activeMode === 3) {
+          // 4 quadrants for 4 teams - right side switched
+          const midX = Math.floor(cols / 2);
+          const midY = Math.floor(rows / 2);
+          if (x < midX) {
+            owner = y < midY ? 1 : 3;
+          } else {
+            owner = y < midY ? 4 : 2; // Switched 2 and 4
+          }
+        }
+        grid[idx(x, y)] = owner;
       }
+    }
+  }
+
+  function createBall(owner, x, y, vx, vy) {
+    return {
+      owner,
+      color: ballColors[owner] || COLORS[1],
+      x,
+      y,
+      vx,
+      vy,
+      r: 12
+    };
+  }
+
+  function spawnBalls() {
+    balls = [];
+    const speed = MODE_SPEEDS[activeMode];
+
+    if (activeMode === 1) {
+      balls.push(createBall(1, boardW * 0.25 + 1, boardH * 0.25 - 2, speed, speed * 0.75));
+      balls.push(createBall(2, boardW * 0.75 - 2, boardH * 0.75 + 1, -speed, -speed * 0.55));
+    } else if (activeMode === 2) {
+      // 2 teams, 4 balls (1 in each quadrant)
+      balls.push(createBall(1, boardW * 0.25, boardH * 0.25, speed, speed * 0.5));
+      balls.push(createBall(2, boardW * 0.75, boardH * 0.25, -speed, speed * 0.5));
+      balls.push(createBall(2, boardW * 0.25, boardH * 0.75, speed, -speed * 0.5));
+      balls.push(createBall(1, boardW * 0.75, boardH * 0.75, -speed, -speed * 0.5));
+    } else if (activeMode === 3) {
+      // 4 teams, 4 balls - switched position/owner on right side
+      balls.push(createBall(1, boardW * 0.25, boardH * 0.25, speed, speed * 0.6));
+      balls.push(createBall(4, boardW * 0.75, boardH * 0.25, -speed, speed * 0.6));
+      balls.push(createBall(3, boardW * 0.25, boardH * 0.75, speed, -speed * 0.6));
+      balls.push(createBall(2, boardW * 0.75, boardH * 0.75, -speed, -speed * 0.6));
+    }
+  }
+
+  function reset() {
+    setInitialSplit();
+    spawnBalls();
+    updateHUD();
+    updateSpeedometer();
+    paused = false;
+    lastTs = performance.now();
+  }
+
+  function updateSpeedometer() {
+    if (speedometer) {
+      speedometer.textContent = `Speed: ${Math.round(MODE_SPEEDS[activeMode])}`;
     }
   }
 
@@ -65,57 +148,58 @@
     grid[idx(cx, cy)] = owner;
   }
 
-  // Balls
-  const ballRadius = 12;
-  const baseSpeed = 800; // speed up here
-
-  // Jitter applied ONLY on wall bounces
-  //const WALL_JITTER = 0.05;
-  const WALL_JITTER_A = 0.05;
-  const WALL_JITTER_B = 0.08;
-
-  const ballA = {
-    owner: 1,
-    color: BALL.A,
-    x: boardW * 0.25,
-    y: boardH * 0.25,
-    vx: baseSpeed,
-    vy: baseSpeed * 0.55,
-    r: ballRadius,
-  };
-
-  const ballB = {
-    owner: 2,
-    color: BALL.B,
-    x: boardW * 1,
-    y: boardH * 2,
-    vx: -baseSpeed * 0.75,
-    vy: -baseSpeed * 0.75,
-    r: ballRadius,
-  };
-
-  function reset() {
-    setInitialSplit();
-
-    // Start offsets
-    ballA.x = boardW * 0.25 + 1.4;
-    ballA.y = boardH * 0.25 - 2.5;
-    ballA.vx = baseSpeed;
-    ballA.vy = baseSpeed * 0.75;
-
-    ballB.x = boardW * 0.75 - 2.3;
-    ballB.y = boardH * 0.75 + 1.2;
-    ballB.vx = -baseSpeed;
-    ballB.vy = -baseSpeed * 0.55;
-
-    paused = false;
-    lastTs = performance.now();
+  function updateHUD() {
+    scoreContainer.innerHTML = "";
+    const teams = activeMode === 3 ? [1, 2, 3, 4] : [1, 2];
+    teams.forEach(id => {
+      const item = document.createElement("div");
+      item.className = "score-item";
+      item.innerHTML = `<span><span class="dot" style="background:${ballColors[id]}"></span> Team ${String.fromCharCode(64 + id)}: <span id="score${id}">0</span></span>`;
+      scoreContainer.appendChild(item);
+    });
   }
+
+  // Handle Mode Selection
+  modeMenu.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn || !btn.dataset.mode) return;
+
+    // Update UI
+    modeMenu.querySelectorAll(".btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    // Set Mode
+    activeMode = parseInt(btn.dataset.mode);
+    reset();
+  });
+
+  // Handle Speed Controls
+  speedUpBtn.addEventListener("click", () => {
+    if (MODE_SPEEDS[activeMode] >= MAX_SPEED) return;
+
+    MODE_SPEEDS[activeMode] = Math.min(MODE_SPEEDS[activeMode] * 1.25, MAX_SPEED);
+
+    balls.forEach(b => {
+      const angle = Math.atan2(b.vy, b.vx);
+      b.vx = Math.cos(angle) * MODE_SPEEDS[activeMode];
+      b.vy = Math.sin(angle) * MODE_SPEEDS[activeMode];
+    });
+    updateSpeedometer();
+  });
+
+  speedDownBtn.addEventListener("click", () => {
+    MODE_SPEEDS[activeMode] *= 0.8;
+    balls.forEach(b => {
+      b.vx *= 0.8;
+      b.vy *= 0.8;
+    });
+    updateSpeedometer();
+  });
 
   function jitterAngle(ball, jitterRad) {
     const speed = Math.hypot(ball.vx, ball.vy);
     let angle = Math.atan2(ball.vy, ball.vx);
-    angle += (Math.random() - 0.7) * jitterRad;
+    angle += (Math.random() - 0.5) * jitterRad; // centered jitter
     ball.vx = Math.cos(angle) * speed;
     ball.vy = Math.sin(angle) * speed;
   }
@@ -123,7 +207,6 @@
   // Canvas edge bounce + jitter on bounce
   function wallBounce(ball) {
     let bounced = false;
-
     if (ball.x - ball.r < 0) {
       ball.x = ball.r;
       ball.vx *= -1;
@@ -146,9 +229,9 @@
     }
 
     if (bounced) {
-      const jitter = ball.owner === 1 ? WALL_JITTER_A : WALL_JITTER_B;
-      jitterAngle(ball, jitter);
-    }}
+      jitterAngle(ball, 0.08);
+    }
+  }
 
   // Circle-rect overlap test
   function circleIntersectsRect(cx, cy, r, rx, ry, rw, rh) {
@@ -225,20 +308,62 @@
     // Do not move into the tile this frame (prevents clipping / tunneling)
   }
 
-  function countScores() {
-    let a = 0, b = 0;
-    for (let i = 0; i < grid.length; i++) {
-      if (grid[i] === 1) a++;
-      else b++;
+  function checkBallCollisions() {
+    for (let i = 0; i < balls.length; i++) {
+      for (let j = i + 1; j < balls.length; j++) {
+        const b1 = balls[i];
+        const b2 = balls[j];
+        const dx = b2.x - b1.x;
+        const dy = b2.y - b1.y;
+        const distSq = dx * dx + dy * dy;
+        const minGap = b1.r + b2.r;
+
+        if (distSq < minGap * minGap) {
+          // Collision detected
+          const dist = Math.sqrt(distSq);
+          const nx = dx / dist;
+          const ny = dy / dist;
+
+          // Resolve overlap
+          const overlap = minGap - dist;
+          b1.x -= nx * overlap / 2;
+          b1.y -= ny * overlap / 2;
+          b2.x += nx * overlap / 2;
+          b2.y += ny * overlap / 2;
+
+          // Simple elastic bounce (equal mass)
+          const v1n = b1.vx * nx + b1.vy * ny;
+          const v2n = b2.vx * nx + b2.vy * ny;
+
+          if (v1n - v2n > 0) {
+            const impulse = v1n - v2n;
+            b1.vx -= impulse * nx;
+            b1.vy -= impulse * ny;
+            b2.vx += impulse * nx;
+            b2.vy += impulse * ny;
+          }
+        }
+      }
     }
-    scoreAEl.textContent = String(a);
-    scoreBEl.textContent = String(b);
+  }
+
+  function countScores() {
+    const scores = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    for (let i = 0; i < grid.length; i++) {
+      scores[grid[i]]++;
+    }
+
+    const teams = activeMode === 3 ? [1, 2, 3, 4] : [1, 2];
+    teams.forEach(id => {
+      const el = document.getElementById(`score${id}`);
+      if (el) el.textContent = String(scores[id]);
+    });
   }
 
   function drawGrid() {
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
-        ctx.fillStyle = grid[idx(x, y)] === 1 ? COLORS.A : COLORS.B;
+        ctx.fillStyle = COLORS[grid[idx(x, y)]];
         ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
       }
     }
@@ -265,6 +390,11 @@
 
   // Controls
   let paused = false;
+
+  canvas.addEventListener("click", () => {
+    paused = !paused;
+  });
+
   window.addEventListener("keydown", (e) => {
     if (e.code === "Space") {
       e.preventDefault();
@@ -282,25 +412,24 @@
     lastTs = ts;
 
     if (!paused) {
-      const nextAx = ballA.x + ballA.vx * dt;
-      const nextAy = ballA.y + ballA.vy * dt;
-      const nextBx = ballB.x + ballB.vx * dt;
-      const nextBy = ballB.y + ballB.vy * dt;
+      balls.forEach(ball => {
+        const nextX = ball.x + ball.vx * dt;
+        const nextY = ball.y + ball.vy * dt;
 
-      territoryBounceAndCaptureAccurate(ballA, nextAx, nextAy);
-      territoryBounceAndCaptureAccurate(ballB, nextBx, nextBy);
+        territoryBounceAndCaptureAccurate(ball, nextX, nextY);
+        wallBounce(ball);
 
-      wallBounce(ballA);
-      wallBounce(ballB);
+        if (ownerAtPoint(ball.x, ball.y) !== ball.owner) {
+          setOwnerAtPoint(ball.x, ball.y, ball.owner);
+        }
+      });
 
-      if (ownerAtPoint(ballA.x, ballA.y) !== ballA.owner) setOwnerAtPoint(ballA.x, ballA.y, ballA.owner);
-      if (ownerAtPoint(ballB.x, ballB.y) !== ballB.owner) setOwnerAtPoint(ballB.x, ballB.y, ballB.owner);
+      checkBallCollisions();
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawGrid();
-    drawBall(ballA);
-    drawBall(ballB);
+    balls.forEach(drawBall);
     countScores();
     if (paused) drawPaused();
 
