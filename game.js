@@ -12,13 +12,20 @@
   const speedometer = document.getElementById("speedometer");
 
   const COLORS = {
-    1: "#550f27", // A - Maroon
-    2: "#ddcfd3", // B - Grey
-    3: "#1a5e63", // C - Teal
-    4: "#c9a227", // D - Gold
+    1: "#550f27", // Maroon
+    2: "#ddcfd3", // Grey
+    3: "#1a5e63", // Teal
+    4: "#c9a227", // Gold
     ballStroke: "rgba(0,0,0,0.25)",
     overlay: "rgba(0,0,0,0.35)",
     text: "rgba(255,255,255,0.92)",
+  };
+
+  const COLOR_NAMES = {
+    1: "Maroon",
+    2: "Grey",
+    3: "Teal",
+    4: "Gold"
   };
 
   const ballColors = {
@@ -154,7 +161,7 @@
     teams.forEach(id => {
       const item = document.createElement("div");
       item.className = "score-item";
-      item.innerHTML = `<span><span class="dot" style="background:${ballColors[id]}"></span> Team ${String.fromCharCode(64 + id)}: <span id="score${id}">0</span></span>`;
+      item.innerHTML = `<span><span class="dot" style="background:${COLORS[id]}"></span> ${COLOR_NAMES[id]}: <span id="score${id}">0</span></span>`;
       scoreContainer.appendChild(item);
     });
   }
