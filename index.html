@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dominance Prototype</title>
+    <style>
+      html, body {
+        margin: 0;
+        // height: 100%;
+        background: #111;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        color: #eee;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .wrap {
+        display: flex;
+        justify-content: center;
+        margin-top: 40px;
+      }
+      canvas {
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        image-rendering: pixelated;
+      }
+      .hud {
+        margin-top: 18px;
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        font-size: 14px;
+        opacity: 0.95;
+      }
+      .pill {
+        
+        padding: 8px 10px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(20,20,20,0.7);
+        border-radius: 999px;
+        display: inline-flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        display: inline-block;
+      }
+      .btn {
+        
+        cursor: pointer;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(30,30,30,0.85);
+        color: #eee;
+        font-weight: 600;
+      }
+      .btn:active { transform: translateY(1px); }
+      .hint {
+        opacity: 0.75;
+        font-size: 12px;
+        margin-left: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    
+
+    <div class="wrap">
+      <!-- 1:1 ratio map -->
+      <canvas id="game" width="640" height="640"></canvas>
+    </div>
+
+    <div class="hud">
+      <div class="pill">
+        <span><span class="dot" id="dotA"></span> A: <span id="scoreA">0</span></span>
+        <span><span class="dot" id="dotB"></span> B: <span id="scoreB">0</span></span>
+        <span class="hint">Space: pause, R: reset</span>
+      </div>
+      <button class="btn" id="resetBtn">Reset</button>
+    </div>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
